@@ -1,0 +1,34 @@
+# Architecture Analysis Workflow
+# Analyzes codebase structure and produces architectural documentation
+
+FROM qwen3:32b
+
+LABEL version=1.0
+LABEL workflow=architecture-analysis
+LABEL author=you
+
+SYSTEM """
+You are a senior software architect with deep expertise in distributed systems,
+clean architecture, domain-driven design, and developer tooling.
+
+Your analysis must be:
+- Precise and grounded in actual code evidence
+- Focused on high-impact improvements
+- Respectful of existing design decisions
+- Actionable, not theoretical
+"""
+
+CONTEXT ./src
+
+TOOL filesystem
+
+RUN analyze the overall project structure and identify the main architectural patterns in use
+RUN identify the top 3 architectural strengths of this codebase with supporting evidence
+RUN identify the top 3 areas that would benefit most from improvement
+RUN generate a formal Architecture Decision Record (ADR) for the most impactful change
+
+EVAL consistency
+EVAL non-empty
+
+EXPORT markdown ./output/architecture-review.md
+EXPORT json ./output/architecture-review.json

@@ -1,0 +1,177 @@
+/**
+ * `pf init` — scaffold a new Promptfile from a built-in template.
+ */
+import { writeFileSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { createInterface } from 'node:readline/promises';
+import { stdin as input, stdout as output } from 'node:process';
+import chalk from 'chalk';
+
+// ---------------------------------------------------------------------------
+// Templates
+// ---------------------------------------------------------------------------
+
+const TEMPLATES: Record<string, { description: string; content: string }> = {
+  basic: {
+    description: 'Simple single-step workflow',
+    content: `FROM gpt-4o
+
+SYSTEM """
+You are a helpful AI assistant. Be concise and accurate.
+"""
+
+RUN answer the user's question
+`,
+  },
+
+  architect: {
+    description: 'Codebase architecture analysis & ADR generation',
+    content: `FROM qwen3:32b
+
+LABEL version=1.0
+LABEL workflow=architecture-analysis
+
+SYSTEM """
+You are a senior software architect with deep expertise in distributed systems,
+clean architecture, and developer tooling. Your analysis is:
+- Precise and backed by code evidence
+- Focused on high-impact improvements
+- Respectful of existing design decisions
+"""
+
+CONTEXT ./src
+
+TOOL filesystem
+
+RUN analyze the overall project structure and identify the main architectural patterns in use
+RUN identify the top 3 architectural strengths of this codebase
+RUN identify the top 3 areas that could benefit from architectural improvements
+RUN generate a concise Architecture Decision Record (ADR) for the most impactful change
+
+EVAL consistency
+EVAL non-empty
+
+EXPORT markdown ./output/architecture-review.md
+EXPORT json ./output/architecture-review.json
+`,
+  },
+
+  summarizer: {
+    description: 'Summarize technical documentation',
+    content: `FROM openai/gpt-4o
+
+LABEL version=1.0
+LABEL workflow=summarization
+
+SET temperature 0.3
+SET max_tokens 2000
+
+SYSTEM """
+You are an expert technical writer who creates clear, concise summaries.
+Your summaries preserve all critical information and highlight actionable takeaways.
+"""
+
+ARG target=./docs
+
+CONTEXT \${target}
+
+RUN identify and list the main topics covered in the documentation
+RUN extract the 5 most important insights as bullet points
+RUN write a TL;DR in exactly 3 sentences
+
+EVAL non-empty
+EVAL length --min 100
+
+EXPORT markdown ./output/summary.md
+EXPORT json ./output/summary.json
+`,
+  },
+
+  reviewer: {
+    description: 'Automated code review',
+    content: `FROM openai/gpt-4o
+
+LABEL version=1.0
+LABEL workflow=code-review
+
+SET temperature 0.2
+
+SYSTEM """
+You are an expert code reviewer with 15+ years of experience.
+Your reviews are specific and actionable — no vague advice.
+Always cite specific code when making observations.
+Focus on: correctness, security, performance, maintainability.
+"""
+
+CONTEXT ./src
+
+TOOL filesystem
+
+RUN identify potential bugs, race conditions, or error handling gaps
+RUN identify security vulnerabilities or unsafe patterns (injection, auth issues, etc.)
+RUN suggest the top 3 most impactful refactoring opportunities
+RUN provide an overall code quality score from 1-10 with justification
+
+EVAL consistency
+EVAL non-empty
+
+EXPORT markdown ./output/code-review.md
+`,
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Command
+// ---------------------------------------------------------------------------
+
+export async function initCommand(template?: string, outputPath?: string): Promise<void> {
+  const rl = createInterface({ input, output });
+
+  try {
+    if (!template) {
+      console.log(chalk.bold('\nAvailable templates:'));
+      for (const [key, tmpl] of Object.entries(TEMPLATES)) {
+        console.log(`  ${chalk.cyan(key.padEnd(12))} ${tmpl.description}`);
+      }
+      console.log();
+      const answer = await rl.question('Select template [basic]: ');
+      template = answer.trim() || 'basic';
+    }
+
+    const tmpl = TEMPLATES[template];
+    if (!tmpl) {
+      console.error(chalk.red(`Unknown template: "${template}"`));
+      console.error(`Available: ${Object.keys(TEMPLATES).join(', ')}`);
+      process.exit(1);
+    }
+
+    let targetPath = outputPath ?? 'Promptfile';
+
+    if (!outputPath) {
+      const answer = await rl.question(`Output file [Promptfile]: `);
+      targetPath = answer.trim() || 'Promptfile';
+    }
+
+    const absPath = resolve(targetPath);
+
+    if (existsSync(absPath)) {
+      const answer = await rl.question(
+        chalk.yellow(`File already exists: ${targetPath}. Overwrite? [y/N]: `),
+      );
+      if (!answer.trim().toLowerCase().startsWith('y')) {
+        console.log('Aborted.');
+        process.exit(0);
+      }
+    }
+
+    writeFileSync(absPath, tmpl.content, 'utf-8');
+
+    console.log();
+    console.log(chalk.green(`✓ Created ${targetPath}`) + chalk.dim(` (template: ${template})`));
+    console.log(chalk.dim(`\nEdit the file, then run:`));
+    console.log(`  pf run ${targetPath}`);
+    console.log();
+  } finally {
+    rl.close();
+  }
+}

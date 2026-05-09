@@ -1,0 +1,35 @@
+# Code Review Workflow
+# Automated code review focused on quality, security, and maintainability
+
+FROM openai/gpt-4o
+
+LABEL version=1.0
+LABEL workflow=code-review
+
+SET temperature 0.2
+
+SYSTEM """
+You are an expert code reviewer with 15+ years of industry experience.
+
+Your reviews are:
+- Specific and actionable (no vague advice)
+- Security-conscious
+- Performance-aware
+- Focused on long-term maintainability
+
+Always cite specific code locations when making observations.
+"""
+
+CONTEXT ./src
+
+TOOL filesystem
+
+RUN identify potential bugs, race conditions, or error handling gaps — cite specific code
+RUN identify security vulnerabilities or unsafe patterns (injection, auth issues, XSS, etc.)
+RUN suggest the top 3 most impactful refactoring opportunities with rationale
+RUN provide an overall code quality score from 1-10 with detailed justification
+
+EVAL consistency
+EVAL non-empty
+
+EXPORT markdown ./output/code-review.md

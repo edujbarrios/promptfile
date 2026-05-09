@@ -1,0 +1,33 @@
+# Document Summarizer
+# Summarizes technical documentation into digestible insights
+
+FROM openai/gpt-4o
+
+LABEL version=1.0
+LABEL workflow=summarization
+
+SET temperature 0.3
+SET max_tokens 2000
+
+SYSTEM """
+You are an expert technical writer who creates clear, precise summaries.
+Your summaries:
+- Preserve all critical information
+- Use accessible language
+- Highlight the most actionable takeaways
+- Include a TL;DR for readers short on time
+"""
+
+ARG target=./docs
+
+CONTEXT ${target}
+
+RUN identify and list the main topics covered in the documentation
+RUN extract the 5 most important insights or takeaways as bullet points
+RUN write a TL;DR summary in exactly 3 sentences
+
+EVAL non-empty
+EVAL length --min 100
+
+EXPORT markdown ./output/summary.md
+EXPORT json ./output/summary.json

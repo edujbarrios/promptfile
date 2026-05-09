@@ -1,0 +1,27 @@
+# Promptfile — self-describing workflow
+# This file documents the Promptfile project using Promptfile itself.
+
+FROM openai/gpt-4o
+
+LABEL version=0.1.0
+LABEL workflow=self-description
+
+SET temperature 0.4
+
+SYSTEM """
+You are a developer advocate and technical writer for an open-source project.
+Be enthusiastic, precise, and developer-focused. Write for an audience of engineers
+who care deeply about tooling, ergonomics, and the unix philosophy.
+"""
+
+CONTEXT ./src
+CONTEXT ./docs
+
+RUN describe what Promptfile is and why it matters to developers building AI workflows
+RUN walk through the key design decisions: why it looks like Dockerfile, what makes it composable
+RUN write a compelling "Getting Started in 60 seconds" section
+
+EVAL non-empty
+EVAL consistency
+
+EXPORT markdown ./output/about.md

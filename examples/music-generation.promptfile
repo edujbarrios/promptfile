@@ -1,0 +1,24 @@
+# Music Generation Workflow — Open Models via Replicate
+# Generates music using Meta's MusicGen or Suno's Bark via Replicate
+
+FROM replicate/meta/musicgen
+
+LABEL version=1.0
+LABEL workflow=music-generation
+LABEL modality=audio-generation
+
+# GENERATE audio submits the prompt to MusicGen on Replicate and saves the result.
+# Requires REPLICATE_API_TOKEN environment variable.
+#
+# Popular Replicate music models:
+#   replicate/meta/musicgen          — Meta's MusicGen (text-to-music)
+#   replicate/suno-ai/bark           — Suno Bark (text-to-audio/speech/music)
+#   replicate/riffusion/riffusion    — Riffusion (spectrogram diffusion)
+#
+# Supported options:
+#   --output  path to save the generated audio
+#   any other option is passed directly to the Replicate model
+
+ARG style=upbeat jazz piano with a walking bass line, 30 seconds
+
+GENERATE audio ${style} --output ./output/music.mp3

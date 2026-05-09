@@ -18,9 +18,13 @@ import type {
   SystemDirective,
   UserDirective,
   ContextDirective,
+  ImageDirective,
+  AudioDirective,
+  VideoDirective,
   MemoryDirective,
   ToolDirective,
   RunDirective,
+  GenerateDirective,
   EvalDirective,
   ExportDirective,
   ArgDirective,
@@ -267,6 +271,68 @@ export function parse(source: string, _filePath?: string): PromptfileAST {
       }
 
       // ------------------------------------------------------------------
+      case 'IMAGE': {
+        const tokens = tokenize(rest);
+        const [positional, options] = parseOptions(tokens);
+        if (positional.length === 0)
+          throw new ParseError('IMAGE requires a path or URL', lineNum);
+
+        const rawDetail = options['detail'] ?? 'auto';
+        if (rawDetail !== 'auto' && rawDetail !== 'low' && rawDetail !== 'high') {
+          throw new ParseError(
+            `IMAGE --detail must be "auto", "low", or "high"`,
+            lineNum,
+          );
+        }
+        directives.push({
+          type: 'IMAGE',
+          src: positional[0],
+          detail: rawDetail,
+          position,
+        } as ImageDirective);
+        break;
+      }
+
+      // ------------------------------------------------------------------
+      case 'AUDIO': {
+        const tokens = tokenize(rest);
+        const [positional, options] = parseOptions(tokens);
+        if (positional.length === 0)
+          throw new ParseError('AUDIO requires a path or URL', lineNum);
+
+        const rawFmt = (options['format'] ?? 'mp3') as AudioDirective['format'];
+        const validFmts: AudioDirective['format'][] = ['mp3', 'wav', 'ogg', 'flac', 'webm'];
+        if (!validFmts.includes(rawFmt)) {
+          throw new ParseError(
+            `AUDIO --format must be one of: ${validFmts.join(', ')}`,
+            lineNum,
+          );
+        }
+        directives.push({
+          type: 'AUDIO',
+          src: positional[0],
+          format: rawFmt,
+          position,
+        } as AudioDirective);
+        break;
+      }
+
+      // ------------------------------------------------------------------
+      case 'VIDEO': {
+        const tokens = tokenize(rest);
+        const [positional] = parseOptions(tokens);
+        if (positional.length === 0)
+          throw new ParseError('VIDEO requires a path or URL', lineNum);
+
+        directives.push({
+          type: 'VIDEO',
+          src: positional[0],
+          position,
+        } as VideoDirective);
+        break;
+      }
+
+      // ------------------------------------------------------------------
       case 'MEMORY': {
         const tokens = tokenize(rest);
         const [positional, options] = parseOptions(tokens);
@@ -303,6 +369,41 @@ export function parse(source: string, _filePath?: string): PromptfileAST {
       case 'RUN': {
         if (!rest) throw new ParseError('RUN requires an instruction', lineNum);
         directives.push({ type: 'RUN', instruction: rest, position } as RunDirective);
+        break;
+      }
+
+      // ------------------------------------------------------------------
+      case 'GENERATE': {
+        const tokens = tokenize(rest);
+        const [positional, options] = parseOptions(tokens);
+        if (positional.length < 1)
+          throw new ParseError('GENERATE requires a modality (image | audio | video)', lineNum);
+
+        const modality = positional[0].toLowerCase() as GenerateDirective['modality'];
+        if (modality !== 'image' && modality !== 'audio' && modality !== 'video') {
+          throw new ParseError(
+            `GENERATE modality must be "image", "audio", or "video"`,
+            lineNum,
+          );
+        }
+
+        // Remaining positional tokens form the prompt
+        let prompt = positional.slice(1).join(' ');
+        if (!prompt && options['prompt']) {
+          prompt = options['prompt'];
+        }
+        if (!prompt) {
+          throw new ParseError('GENERATE requires a prompt after the modality', lineNum);
+        }
+
+        directives.push({
+          type: 'GENERATE',
+          modality,
+          prompt,
+          output: options['output'] ?? null,
+          options,
+          position,
+        } as GenerateDirective);
         break;
       }
 
@@ -403,9 +504,13 @@ export function parse(source: string, _filePath?: string): PromptfileAST {
     system: directives.find((d): d is SystemDirective => d.type === 'SYSTEM') ?? null,
     user: directives.find((d): d is UserDirective => d.type === 'USER') ?? null,
     contexts: directives.filter((d): d is ContextDirective => d.type === 'CONTEXT'),
+    images: directives.filter((d): d is ImageDirective => d.type === 'IMAGE'),
+    audios: directives.filter((d): d is AudioDirective => d.type === 'AUDIO'),
+    videos: directives.filter((d): d is VideoDirective => d.type === 'VIDEO'),
     memory: directives.find((d): d is MemoryDirective => d.type === 'MEMORY') ?? null,
     tools: directives.filter((d): d is ToolDirective => d.type === 'TOOL'),
     runs: directives.filter((d): d is RunDirective => d.type === 'RUN'),
+    generates: directives.filter((d): d is GenerateDirective => d.type === 'GENERATE'),
     evals: directives.filter((d): d is EvalDirective => d.type === 'EVAL'),
     exports: directives.filter((d): d is ExportDirective => d.type === 'EXPORT'),
     args: directives.filter((d): d is ArgDirective => d.type === 'ARG'),
@@ -421,4 +526,11 @@ export function parseFile(filePath: string): PromptfileAST {
 }
 
 export { ParseError } from './types.js';
-export type { PromptfileAST, Directive } from './types.js';
+export type {
+  PromptfileAST,
+  Directive,
+  ImageDirective,
+  AudioDirective,
+  VideoDirective,
+  GenerateDirective,
+} from './types.js';

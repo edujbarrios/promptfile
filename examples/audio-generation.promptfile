@@ -1,0 +1,18 @@
+# Audio Generation Workflow — Text-to-Speech
+# Generates realistic speech from text using OpenAI TTS
+
+FROM openai/tts-1-hd
+
+LABEL version=1.0
+LABEL workflow=audio-generation
+LABEL modality=audio-generation
+
+# GENERATE audio submits the text to a TTS model and saves the audio file.
+# Supported options for openai/tts-1 and openai/tts-1-hd:
+#   --voice   alloy | echo | fable | onyx | nova | shimmer (default: alloy)
+#   --format  mp3 (default) | opus | aac | flac | wav | pcm
+#   --output  path to save the generated audio file
+
+ARG text=Welcome to Promptfile. Define your AI workflow in a single declarative file.
+
+GENERATE audio ${text} --voice nova --format mp3 --output ./output/speech.mp3

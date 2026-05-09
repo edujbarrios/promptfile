@@ -11,9 +11,13 @@ export type DirectiveType =
   | 'SYSTEM'
   | 'USER'
   | 'CONTEXT'
+  | 'IMAGE'
+  | 'AUDIO'
+  | 'VIDEO'
   | 'MEMORY'
   | 'TOOL'
   | 'RUN'
+  | 'GENERATE'
   | 'EVAL'
   | 'EXPORT'
   | 'ARG'
@@ -65,6 +69,41 @@ export interface ContextDirective extends BaseDirective {
   exclude: string[];
 }
 
+/**
+ * IMAGE <path_or_url> [--detail auto|low|high]
+ *
+ * Attaches an image to the next user message. Supported by vision language
+ * models (VLMs) such as GPT-4o, Claude 3, LLaVA, and Gemini Vision.
+ */
+export interface ImageDirective extends BaseDirective {
+  type: 'IMAGE';
+  src: string;
+  detail: 'auto' | 'low' | 'high';
+}
+
+/**
+ * AUDIO <path_or_url> [--format mp3|wav|ogg|flac|webm]
+ *
+ * Attaches audio to the next user message. Supported by audio-capable models
+ * such as GPT-4o-audio-preview and Gemini multimodal.
+ */
+export interface AudioDirective extends BaseDirective {
+  type: 'AUDIO';
+  src: string;
+  format: 'mp3' | 'wav' | 'ogg' | 'flac' | 'webm';
+}
+
+/**
+ * VIDEO <path_or_url>
+ *
+ * Attaches a video reference to the next user message. Supported by
+ * video-capable models such as Gemini 1.5 Pro and future multimodal APIs.
+ */
+export interface VideoDirective extends BaseDirective {
+  type: 'VIDEO';
+  src: string;
+}
+
 /** MEMORY <backend> [<name>] [options] */
 export interface MemoryDirective extends BaseDirective {
   type: 'MEMORY';
@@ -84,6 +123,29 @@ export interface ToolDirective extends BaseDirective {
 export interface RunDirective extends BaseDirective {
   type: 'RUN';
   instruction: string;
+}
+
+/**
+ * GENERATE <modality> <prompt> [--output <path>] [options]
+ *
+ * Submits a generation prompt to a media-generation model and saves the result.
+ * The `modality` field declares what kind of content to produce:
+ *   - `image`  — raster image (PNG/JPEG/WebP)
+ *   - `audio`  — audio file (MP3/WAV/OGG)
+ *   - `video`  — video file (MP4/WebM)
+ *
+ * Provider examples:
+ *   FROM openai/dall-e-3          → GENERATE image "a sunset over the ocean"
+ *   FROM openai/tts-1             → GENERATE audio "Hello, how can I help you?"
+ *   FROM replicate/suno-ai/bark   → GENERATE audio "♪ upbeat jazz melody ♪"
+ *   FROM runway/gen-3-alpha       → GENERATE video "astronaut on the moon"
+ */
+export interface GenerateDirective extends BaseDirective {
+  type: 'GENERATE';
+  modality: 'image' | 'audio' | 'video';
+  prompt: string;
+  output: string | null;
+  options: Record<string, string>;
 }
 
 /** EVAL <check> [options] */
@@ -133,9 +195,13 @@ export type Directive =
   | SystemDirective
   | UserDirective
   | ContextDirective
+  | ImageDirective
+  | AudioDirective
+  | VideoDirective
   | MemoryDirective
   | ToolDirective
   | RunDirective
+  | GenerateDirective
   | EvalDirective
   | ExportDirective
   | ArgDirective
@@ -153,9 +219,13 @@ export interface PromptfileAST {
   system: SystemDirective | null;
   user: UserDirective | null;
   contexts: ContextDirective[];
+  images: ImageDirective[];
+  audios: AudioDirective[];
+  videos: VideoDirective[];
   memory: MemoryDirective | null;
   tools: ToolDirective[];
   runs: RunDirective[];
+  generates: GenerateDirective[];
   evals: EvalDirective[];
   exports: ExportDirective[];
   args: ArgDirective[];

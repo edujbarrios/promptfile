@@ -1,0 +1,29 @@
+# Multi-image Comparison Workflow
+# Compare two or more images using a vision language model
+
+FROM anthropic/claude-3-5-sonnet-20241022
+
+LABEL version=1.0
+LABEL workflow=image-comparison
+LABEL modality=vision
+
+SYSTEM """
+You are an expert visual comparator. When given multiple images, you provide
+thorough, objective comparisons focusing on composition, style, and content differences.
+"""
+
+# Provide multiple images for comparison
+ARG image1=https://example.com/image1.jpg
+ARG image2=https://example.com/image2.jpg
+
+IMAGE ${image1} --detail high
+IMAGE ${image2} --detail high
+
+RUN describe each image individually before comparing them
+RUN compare the two images: what are the key similarities and differences?
+RUN which image is more effective for its apparent purpose, and why?
+
+EVAL non-empty
+EVAL consistency
+
+EXPORT markdown ./output/image-comparison.md

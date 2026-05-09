@@ -1,0 +1,19 @@
+# Image Generation Workflow — DALL-E 3
+# Generates images from text prompts using OpenAI's DALL-E 3
+
+FROM openai/dall-e-3
+
+LABEL version=1.0
+LABEL workflow=image-generation
+LABEL modality=image-generation
+
+# GENERATE image submits the prompt to DALL-E 3 and saves the result.
+# Supported options: --size, --quality, --style, --output
+#   --size      1024x1024 (default) | 1792x1024 | 1024x1792
+#   --quality   standard (default) | hd
+#   --style     vivid (default) | natural
+#   --output    path to save the generated image
+
+ARG prompt=a photorealistic sunset over rolling green hills with a lone oak tree
+
+GENERATE image ${prompt} --size 1792x1024 --quality hd --output ./output/image.png

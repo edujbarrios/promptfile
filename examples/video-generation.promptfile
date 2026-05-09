@@ -1,0 +1,25 @@
+# Video Generation Workflow — Open Models via Replicate
+# Generates video from text prompts using open-source video models
+
+FROM replicate/anotherjesse/zeroscope-v2-xl
+
+LABEL version=1.0
+LABEL workflow=video-generation
+LABEL modality=video-generation
+
+# GENERATE video submits the prompt to a video generation model via Replicate.
+# Requires REPLICATE_API_TOKEN environment variable.
+#
+# Popular Replicate video models:
+#   replicate/anotherjesse/zeroscope-v2-xl   — text-to-video (open-source)
+#   replicate/lucataco/animate-diff          — AnimateDiff (controlled generation)
+#   replicate/stability-ai/stable-video-diffusion — image-to-video
+#
+# Runway and Sora are not yet available as API providers; check back in future versions.
+#
+# Supported options:
+#   --output  path to save the generated video
+
+ARG scene=a timelapse of clouds passing over snow-capped mountains at golden hour
+
+GENERATE video ${scene} --output ./output/video.mp4

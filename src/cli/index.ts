@@ -75,7 +75,7 @@ export function createCLI(): Command {
   // ─── pf init ──────────────────────────────────────────────────────────────
   program
     .command('init [template] [output]')
-    .description('Create a new Promptfile from a template (basic | architect | summarizer | reviewer)')
+    .description('Create a new Promptfile from a template (basic | architect | summarizer | reviewer | vision | image-gen | audio-gen | music-gen | video-gen)')
     .action(async (template?: string, output?: string) => {
       await initCommand(template, output);
     });

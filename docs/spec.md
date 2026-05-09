@@ -1,9 +1,11 @@
-# Promptfile Specification v0.1
-<!-- Dockerfile for AI workflows -->
+# Promptfile Specification v0.2
+<!-- Dockerfile for AI workflows — text, vision, audio, and video -->
 
 ## Overview
 
-A **Promptfile** defines a reproducible, self-contained AI workflow. It specifies the model, system prompt, context, tools, memory, workflow steps, evaluation criteria, and output format — all in a single declarative file.
+A **Promptfile** defines a reproducible, self-contained AI workflow. It specifies the model, system prompt, context, multimodal inputs, tools, memory, workflow steps, generation tasks, evaluation criteria, and output format — all in a single declarative file.
+
+Promptfiles support all AI modalities: **text/LLM**, **vision (VLM)**, **audio input**, **image generation**, **audio generation**, and **video generation**.
 
 Promptfiles are executed by the `pf` CLI.
 
@@ -44,19 +46,71 @@ CONTEXT ${target}
 
 ### `FROM`
 
-**Required.** Specifies the AI model to use.
+**Required.** Specifies the AI model and provider.
 
 ```
 FROM <model>
 FROM <provider>/<model> [options...]
 ```
 
-| Syntax | Provider | Example |
-|--------|----------|---------|
-| `FROM gpt-4o` | OpenAI (auto-detected) | GPT-4o via OpenAI |
-| `FROM openai/gpt-4o` | OpenAI (explicit) | GPT-4o via OpenAI |
-| `FROM qwen3:32b` | Ollama (auto-detected) | Qwen3 32B via local Ollama |
-| `FROM ollama/llama3` | Ollama (explicit) | Llama 3 via local Ollama |
+#### Text / LLM
+
+| Syntax | Provider | Notes |
+|--------|----------|-------|
+| `FROM gpt-4o` | OpenAI (auto-detected) | |
+| `FROM openai/gpt-4o` | OpenAI (explicit) | |
+| `FROM anthropic/claude-3-5-sonnet-20241022` | Anthropic | |
+| `FROM qwen3:32b` | Ollama (auto-detected) | Local model |
+| `FROM ollama/llama3` | Ollama (explicit) | Local model |
+| `FROM mistral/mistral-large-latest` | Mistral AI | |
+| `FROM groq/llama-3.1-70b-versatile` | Groq | Ultra-fast |
+| `FROM gemini/gemini-1.5-pro` | Google Gemini | |
+| `FROM together/<model>` | Together AI | |
+| `FROM deepseek/deepseek-chat` | DeepSeek | |
+| `FROM perplexity/<model>` | Perplexity | |
+| `FROM fireworks/<model>` | Fireworks AI | |
+
+#### Vision Language Models (VLM)
+
+Use any VLM-capable model with `IMAGE` directives to attach images.
+
+| Model | Vision |
+|-------|--------|
+| `openai/gpt-4o` | ✅ |
+| `anthropic/claude-3-5-sonnet-20241022` | ✅ |
+| `ollama/llava` | ✅ (local) |
+| `gemini/gemini-1.5-pro` | ✅ |
+
+#### Audio-capable models
+
+| Model | Audio input |
+|-------|-------------|
+| `openai/gpt-4o-audio-preview` | ✅ |
+
+#### Image generation models
+
+| Model | Notes |
+|-------|-------|
+| `openai/dall-e-3` | DALL-E 3 |
+| `openai/dall-e-2` | DALL-E 2 |
+| `replicate/<owner>/<model>` | Stable Diffusion, Flux, etc. |
+
+#### Audio generation models
+
+| Model | Notes |
+|-------|-------|
+| `openai/tts-1` | OpenAI TTS |
+| `openai/tts-1-hd` | OpenAI TTS HD |
+| `replicate/meta/musicgen` | Meta MusicGen |
+| `replicate/suno-ai/bark` | Suno Bark |
+
+#### Video generation models
+
+| Model | Notes |
+|-------|-------|
+| `replicate/anotherjesse/zeroscope-v2-xl` | Zeroscope v2 |
+| `replicate/lucataco/animate-diff` | AnimateDiff |
+| `replicate/stability-ai/stable-video-diffusion` | SVD |
 
 Options are passed as `key=value` pairs after the model name:
 
@@ -134,9 +188,77 @@ Files are formatted as fenced code blocks inside `<file path="...">` tags. Binar
 
 ---
 
+### `IMAGE`
+
+Attaches an image to the next user message. Supported by vision language models (VLMs).
+
+```
+IMAGE <path_or_url> [--detail auto|low|high]
+```
+
+| Option | Values | Default |
+|--------|--------|---------|
+| `--detail` | `auto`, `low`, `high` | `auto` |
+
+```
+IMAGE ./screenshot.png
+IMAGE ./diagram.png --detail high
+IMAGE https://example.com/photo.jpg --detail low
+```
+
+- **Local files** are read and base64-encoded as data URIs automatically.
+- **Remote URLs** are passed directly to the model.
+- Multiple `IMAGE` directives attach multiple images in a single user message.
+- Combine with `RUN` steps to ask the model about the images.
+
+```
+FROM openai/gpt-4o
+
+IMAGE ./ui.png --detail high
+
+RUN describe the UI layout and identify accessibility issues
+```
+
+---
+
+### `AUDIO`
+
+Attaches an audio file to the next user message. Supported by audio-capable models such as `openai/gpt-4o-audio-preview`.
+
+```
+AUDIO <path_or_url> [--format mp3|wav|ogg|flac|webm]
+```
+
+| Option | Values | Default |
+|--------|--------|---------|
+| `--format` | `mp3`, `wav`, `ogg`, `flac`, `webm` | `mp3` |
+
+```
+AUDIO ./recording.mp3
+AUDIO ./speech.wav --format wav
+```
+
+Local files are base64-encoded before being sent to the model.
+
+---
+
+### `VIDEO`
+
+Attaches a video URL reference to the next user message. Support varies by provider.
+
+```
+VIDEO <url>
+```
+
+```
+VIDEO https://example.com/clip.mp4
+```
+
+---
+
 ### `MEMORY`
 
-Configures a persistent memory backend. Each RUN step is stored and can be recalled in future runs.
+Configures a persistent memory backend.
 
 ```
 MEMORY <backend> [<name>] [options...]
@@ -149,7 +271,6 @@ MEMORY <backend> [<name>] [options...]
 ```
 MEMORY local
 MEMORY local myproject
-MEMORY local --name myproject
 ```
 
 ---
@@ -188,6 +309,59 @@ Steps are executed sequentially. The full conversation history (including prior 
 RUN analyze the codebase architecture
 RUN identify top security risks
 RUN generate a remediation plan
+```
+
+---
+
+### `GENERATE`
+
+Submits a generation prompt to a media-generation model and saves the result.
+
+```
+GENERATE <modality> <prompt> [options...]
+```
+
+| Modality | Description |
+|----------|-------------|
+| `image` | Generate a raster image (PNG/JPEG/WebP) |
+| `audio` | Generate an audio file (MP3/WAV/OGG) |
+| `video` | Generate a video file (MP4/WebM) |
+
+| Option | Description |
+|--------|-------------|
+| `--output <path>` | Path to save the generated file |
+| `--size` | Image size (DALL-E 3: `1024x1024`, `1792x1024`, `1024x1792`) |
+| `--quality` | Image quality: `standard` or `hd` (DALL-E 3 only) |
+| `--style` | Image style: `vivid` or `natural` (DALL-E 3 only) |
+| `--voice` | TTS voice: `alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer` |
+| `--format` | Audio format: `mp3`, `opus`, `aac`, `flac`, `wav`, `pcm` |
+
+```
+GENERATE image "a photorealistic sunset" --size 1792x1024 --output ./output/image.png
+GENERATE audio "Hello from Promptfile!" --voice nova --output ./output/speech.mp3
+GENERATE video "astronaut on the moon" --output ./output/video.mp4
+```
+
+Provider examples:
+
+```
+FROM openai/dall-e-3
+GENERATE image "a serene Japanese garden at dawn" --quality hd --output ./art.png
+```
+
+```
+FROM openai/tts-1-hd
+GENERATE audio "This message was generated by AI." --voice shimmer --output ./speech.mp3
+```
+
+```
+FROM replicate/meta/musicgen
+GENERATE audio "upbeat jazz with walking bass, 30 seconds" --output ./music.mp3
+```
+
+```
+FROM replicate/anotherjesse/zeroscope-v2-xl
+GENERATE video "timelapse of clouds over mountains" --output ./video.mp4
 ```
 
 ---
@@ -278,6 +452,7 @@ LABEL <key>=<value>
 LABEL version=1.0
 LABEL author=alice
 LABEL workflow=code-review
+LABEL modality=vision
 ```
 
 ---
@@ -296,11 +471,35 @@ INCLUDE ./base.promptfile
 
 ---
 
-## Complete Example
+## Complete Example — Vision Analysis
 
 ```promptfile
-# Full-featured code review workflow
+FROM openai/gpt-4o
 
+LABEL version=1.0
+LABEL workflow=vision-ui-review
+LABEL modality=vision
+
+SYSTEM """
+You are a UX expert. Analyze UI screenshots for usability and accessibility.
+"""
+
+IMAGE ./screenshots/dashboard.png --detail high
+
+RUN describe the UI layout and all visible components
+RUN identify accessibility issues (contrast, font size, missing labels)
+RUN suggest the top 3 improvements with rationale
+
+EVAL non-empty
+
+EXPORT markdown ./output/ui-review.md
+```
+
+---
+
+## Complete Example — Code Review
+
+```promptfile
 FROM openai/gpt-4o
 
 LABEL version=1.0
@@ -337,8 +536,17 @@ EXPORT json ./output/review.json
 
 | Variable | Description |
 |----------|-------------|
-| `OPENAI_API_KEY` | OpenAI API key (required for OpenAI models) |
+| `OPENAI_API_KEY` | OpenAI API key (chat, vision, DALL-E, TTS) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (Claude Vision) |
+| `REPLICATE_API_TOKEN` | Replicate API token (open image/audio/video models) |
 | `OLLAMA_HOST` | Ollama base URL (default: `http://localhost:11434`) |
+| `MISTRAL_API_KEY` | Mistral AI API key |
+| `GROQ_API_KEY` | Groq API key |
+| `GEMINI_API_KEY` | Google Gemini API key |
+| `TOGETHER_API_KEY` | Together AI API key |
+| `DEEPSEEK_API_KEY` | DeepSeek API key |
+| `PERPLEXITY_API_KEY` | Perplexity AI API key |
+| `FIREWORKS_API_KEY` | Fireworks AI API key |
 | `GITHUB_TOKEN` | GitHub token (required for `TOOL github`) |
 | `DEBUG` | Set to any value to enable verbose error output |
 
@@ -353,29 +561,53 @@ EXPORT json ./output/review.json
 5. Initialize memory (`MEMORY`)
 6. Register tools (`TOOL`)
 7. Build the initial message list (`SYSTEM`, `USER`)
-8. For each `RUN` step:
+8. Attach multimodal inputs: `IMAGE`, `AUDIO`, `VIDEO` (added to user message)
+9. For each `RUN` step:
    - Append the instruction as a user message
    - Call the model (with tools if registered)
    - Append the response as an assistant message
    - Persist to memory if configured
-9. Run `EVAL` checks over all outputs
-10. Write `EXPORT` files
+10. For each `GENERATE` step:
+    - Resolve a generation adapter
+    - Submit the prompt to the provider
+    - Download and save the result if `--output` is specified
+11. Run `EVAL` checks over all RUN outputs
+12. Write `EXPORT` files
 
 ---
 
 ## Provider Support Matrix
 
+### Chat / VLM
+
 | Provider | Status | Notes |
 |----------|--------|-------|
-| OpenAI | ✅ Full | `OPENAI_API_KEY` required |
-| Ollama | ✅ Full | Local server at `OLLAMA_HOST` |
-| Anthropic | 🔜 Planned | `anthropic/<model>` |
-| Mistral | 🔜 Planned | `mistral/<model>` |
-| Groq | 🔜 Planned | `groq/<model>` |
+| OpenAI | ✅ Full | `OPENAI_API_KEY`; GPT-4o supports vision |
+| Anthropic | ✅ Full | `ANTHROPIC_API_KEY`; Claude 3+ supports vision |
+| Ollama | ✅ Full | Local server; LLaVA supports vision |
+| Mistral | ✅ Full | `MISTRAL_API_KEY` |
+| Groq | ✅ Full | `GROQ_API_KEY` |
+| Google Gemini | ✅ Full | `GEMINI_API_KEY` |
+| Together AI | ✅ Full | `TOGETHER_API_KEY` |
+| DeepSeek | ✅ Full | `DEEPSEEK_API_KEY` |
+| Perplexity | ✅ Full | `PERPLEXITY_API_KEY` |
+| Fireworks AI | ✅ Full | `FIREWORKS_API_KEY` |
 
----
+### Generation
 
-## Tool Support Matrix
+| Provider | Modality | Status | Notes |
+|----------|----------|--------|-------|
+| `openai/dall-e-3` | Image | ✅ Full | `OPENAI_API_KEY` |
+| `openai/dall-e-2` | Image | ✅ Full | `OPENAI_API_KEY` |
+| `openai/tts-1` | Audio | ✅ Full | `OPENAI_API_KEY` |
+| `openai/tts-1-hd` | Audio | ✅ Full | `OPENAI_API_KEY` |
+| `replicate/*` | Image/Audio/Video | ✅ Full | `REPLICATE_API_TOKEN` |
+| fal.ai | Image/Video | 🔜 Planned | — |
+| ElevenLabs | Audio | 🔜 Planned | — |
+| Suno (native) | Audio | 🔜 Planned | — |
+| Runway | Video | 🔜 Planned | — |
+
+### Tool
 
 | Tool | Status | Notes |
 |------|--------|-------|
@@ -383,11 +615,8 @@ EXPORT json ./output/review.json
 | `github` | ✅ Full | `GITHUB_TOKEN` required |
 | `web` | 🔜 Planned | HTTP fetch |
 | `shell` | 🔜 Planned | Run shell commands (sandboxed) |
-| `database` | 🔜 Planned | SQL query support |
 
----
-
-## Memory Backend Support Matrix
+### Memory
 
 | Backend | Status | Notes |
 |---------|--------|-------|
@@ -397,4 +626,4 @@ EXPORT json ./output/review.json
 
 ---
 
-*Promptfile v0.1 — [github.com/edujbarrios/promptfile](https://github.com/edujbarrios/promptfile)*
+*Promptfile v0.2 — [github.com/edujbarrios/promptfile](https://github.com/edujbarrios/promptfile)*

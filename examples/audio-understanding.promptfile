@@ -1,0 +1,26 @@
+# Audio Understanding Workflow
+# Transcribes and analyzes an audio file using a multimodal model
+
+FROM openai/gpt-4o-audio-preview
+
+LABEL version=1.0
+LABEL workflow=audio-analysis
+LABEL modality=audio-input
+
+SYSTEM """
+You are an expert audio analyst. When given audio, you provide accurate transcriptions
+and thorough analysis of the content, tone, and notable audio characteristics.
+"""
+
+# Attach a local audio file (mp3, wav, ogg, flac, or webm)
+ARG audio_file=./input/recording.mp3
+
+AUDIO ${audio_file} --format mp3
+
+RUN transcribe the audio content accurately
+RUN analyze the speaker's tone, pace, and speaking style
+RUN provide a concise summary of the main points discussed
+
+EVAL non-empty
+
+EXPORT markdown ./output/audio-analysis.md

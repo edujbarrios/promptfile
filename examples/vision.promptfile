@@ -1,0 +1,24 @@
+# Vision Language Model Example
+# Analyze an image using GPT-4o or any VLM provider
+
+FROM openai/gpt-4o
+
+LABEL version=1.0
+LABEL workflow=vision-analysis
+LABEL modality=vision
+
+SYSTEM """
+You are a precise visual analyst. Describe what you see in the image with accuracy.
+Focus on: subjects, context, composition, notable details, and any text present.
+"""
+
+# Attach an image — can be a local file or a public URL
+IMAGE https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png --detail high
+
+RUN describe everything you see in this image in detail
+RUN identify any text, logos, or symbols present
+RUN rate the image quality and composition from 1 to 10 with justification
+
+EVAL non-empty
+
+EXPORT markdown ./output/vision-analysis.md

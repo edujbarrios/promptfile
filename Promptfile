@@ -3,8 +3,9 @@
 
 FROM openai/gpt-4o
 
-LABEL version=0.1.0
+LABEL version=0.2.0
 LABEL workflow=self-description
+LABEL modality=text
 
 SET temperature 0.4
 
@@ -18,7 +19,7 @@ CONTEXT ./src
 CONTEXT ./docs
 
 RUN describe what Promptfile is and why it matters to developers building AI workflows
-RUN walk through the key design decisions: why it looks like Dockerfile, what makes it composable
+RUN walk through the key design decisions: why it looks like Dockerfile, what makes it composable, and how it supports text, vision, audio, and video modalities
 RUN write a compelling "Getting Started in 60 seconds" section
 
 EVAL non-empty

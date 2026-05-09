@@ -5,16 +5,19 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
+    "promptfile": "bin/promptfile.js",
     "pf": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "start": "node bin/promptfile.js",
     "dev": "tsx src/index.ts",
+    "build": "tsc",
     "test": "node --experimental-vm-modules node_modules/.bin/jest",
     "lint": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
   "files": [
+    "bin",
     "dist",
     "README.md"
   ],

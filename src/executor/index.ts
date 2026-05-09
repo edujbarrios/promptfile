@@ -160,7 +160,13 @@ function buildImagePart(directive: ImageDirective, cwd: string): MessageContentP
     gif: 'image/gif',
     webp: 'image/webp',
   };
-  const mime = mimeMap[ext] ?? 'image/jpeg';
+  const mime = mimeMap[ext];
+  if (!mime) {
+    throw new Error(
+      `IMAGE: unsupported image format ".${ext}" at ${absPath}. ` +
+        `Supported formats: jpg, jpeg, png, gif, webp`,
+    );
+  }
   const dataUri = `data:${mime};base64,${data.toString('base64')}`;
   return {
     type: 'image_url',

@@ -21,8 +21,8 @@ interface ReplicatePrediction {
   urls?: { get: string };
 }
 
-const POLL_INTERVAL_MS = 1000;
-const MAX_POLLS = 300; // 5 minutes max
+const DEFAULT_POLL_INTERVAL_MS = 1000;
+const DEFAULT_MAX_POLLS = 600; // 10 minutes — video generation can take several minutes
 
 export class ReplicateAdapter implements GenerationAdapter {
   readonly name: string;
@@ -30,15 +30,19 @@ export class ReplicateAdapter implements GenerationAdapter {
   readonly modality: GenerationModality;
   private apiToken: string;
   private baseURL = 'https://api.replicate.com/v1';
+  private pollIntervalMs: number;
+  private maxPolls: number;
 
   constructor(
     model: string,
     modality: GenerationModality,
-    options?: { apiToken?: string },
+    options?: { apiToken?: string; pollIntervalMs?: number; maxPolls?: number },
   ) {
     this.name = model;
     this.modality = modality;
     this.apiToken = options?.apiToken ?? process.env['REPLICATE_API_TOKEN'] ?? '';
+    this.pollIntervalMs = options?.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
+    this.maxPolls = options?.maxPolls ?? DEFAULT_MAX_POLLS;
   }
 
   private get headers(): Record<string, string> {
@@ -82,10 +86,11 @@ export class ReplicateAdapter implements GenerationAdapter {
     // Poll until done
     let polls = 0;
     while (prediction.status !== 'succeeded' && prediction.status !== 'failed') {
-      if (polls++ >= MAX_POLLS) {
-        throw new Error('Replicate: prediction timed out');
+      if (polls++ >= this.maxPolls) {
+        const maxMinutes = Math.round((this.maxPolls * this.pollIntervalMs) / 60000);
+        throw new Error(`Replicate: prediction timed out after ${maxMinutes} minutes`);
       }
-      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+      await new Promise((r) => setTimeout(r, this.pollIntervalMs));
 
       const pollRes = await fetch(`${this.baseURL}/predictions/${prediction.id}`, {
         headers: this.headers,
